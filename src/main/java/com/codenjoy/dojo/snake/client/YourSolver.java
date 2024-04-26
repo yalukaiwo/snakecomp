@@ -47,7 +47,7 @@ public class YourSolver implements Solver<Board> {
 
     public static List<Vertex> getShortestPathTo(Vertex target) {
         List<Vertex> path = new ArrayList<>();
-        for (Vertex vertex = target; vertex != null; vertex = vertex.previous) {
+        for (Vertex vertex = target; vertex != null; vertex = vertex.minPrevious) {
             path.add(vertex);
         }
         Collections.reverse(path);
@@ -64,11 +64,11 @@ public class YourSolver implements Solver<Board> {
             Vertex current = queue.poll();
             for (Edge adjEdge : current.edges) {
                 Vertex neighbour = adjEdge.target();
-                double edgeWeight = adjEdge.weight();
+                double edgeWeight = adjEdge.minWeight();
                 double distanceThroughCurrent = current.minDistance + edgeWeight;
                 if (distanceThroughCurrent < neighbour.minDistance) {
                     neighbour.minDistance = distanceThroughCurrent;
-                    neighbour.previous = current;
+                    neighbour.minPrevious = current;
                     neighbour.direction = adjEdge.action;
                     queue.offer(neighbour);
                 }
@@ -102,14 +102,14 @@ public class YourSolver implements Solver<Board> {
             if (current.coordinates[0] < 14) {
                 Vertex v = visited.get(Arrays.hashCode(new int[]{current.coordinates[0] + 1, current.coordinates[1]}));
                 if (v != null) {
-                    Edge e = new Edge(v, v.price, Direction.RIGHT);
+                    Edge e = new Edge(v, v.price, 1000 - v.price, Direction.RIGHT);
                     current.edges.add(e);
                 } else {
                     Elements element = board.getAt(current.coordinates[0] + 1, current.coordinates[1]);
-                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) ? 1 : 1000;
+                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) || isTail(element) ? 1 : 1000;
                     Vertex v1 = new Vertex(current.coordinates[0] + 1, current.coordinates[1], price);
                     visited.put(Arrays.hashCode(v1.coordinates), v1);
-                    Edge e = new Edge(v1, price, Direction.RIGHT);
+                    Edge e = new Edge(v1, price, 1000 - price, Direction.RIGHT);
                     current.edges.add(e);
                     q.offer(v1);
                 }
@@ -122,7 +122,7 @@ public class YourSolver implements Solver<Board> {
                     current.edges.add(e);
                 } else {
                     Elements element = board.getAt(current.coordinates[0] - 1, current.coordinates[1]);
-                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) ? 1 : 1000;
+                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) || isTail(element) ? 1 : 1000;
                     Vertex v1 = new Vertex(current.coordinates[0] - 1, current.coordinates[1], price);
                     visited.put(Arrays.hashCode(v1.coordinates), v1);
                     Edge e = new Edge(v1, price, Direction.LEFT);
@@ -138,7 +138,7 @@ public class YourSolver implements Solver<Board> {
                     current.edges.add(e);
                 } else {
                     Elements element = board.getAt(current.coordinates[0], current.coordinates[1] + 1);
-                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) ? 1 : 1000;
+                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) || isTail(element) ? 1 : 1000;
                     Vertex v1 = new Vertex(current.coordinates[0], current.coordinates[1] + 1, price);
                     visited.put(Arrays.hashCode(v1.coordinates), v1);
                     Edge e = new Edge(v1, price, Direction.UP);
@@ -154,7 +154,7 @@ public class YourSolver implements Solver<Board> {
                     current.edges.add(e);
                 } else {
                     Elements element = board.getAt(current.coordinates[0], current.coordinates[1] - 1);
-                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) ? 1 : 1000;
+                    int price = element.equals(Elements.BAD_APPLE) ? 10 : element.equals(Elements.GOOD_APPLE) || element.equals(Elements.NONE) || isTail(element) ? 1 : 1000;
                     Vertex v1 = new Vertex(current.coordinates[0], current.coordinates[1] - 1, price);
                     visited.put(Arrays.hashCode(v1.coordinates), v1);
                     Edge e = new Edge(v1, price, Direction.DOWN);
@@ -166,6 +166,11 @@ public class YourSolver implements Solver<Board> {
 
         return new Pair<>(source, targetVertex);
     }
+
+    private boolean isTail(Elements e) {
+        return e.equals(Elements.TAIL_END_UP) || e.equals(Elements.TAIL_END_LEFT) || e.equals(Elements.TAIL_END_DOWN) || e.equals(Elements.TAIL_END_RIGHT);
+    }
+
     private Pair<Vertex, Vertex> getGraph(Board board, int[] target) {
         return getGraph(board, target, 0);
     }
@@ -180,13 +185,26 @@ public class YourSolver implements Solver<Board> {
         computePaths(source);
         List<Vertex> path = getShortestPathTo(apple);
 
-        List<Point> snake = board.getSnake();
+        if (path.get(path.size() - 1).minDistance > 1000) {
+            System.out.println("FOLLOWING TAIL!");
 
-        Point point = snake.get(snake.size() - 1);
+            Point snakeTail = null;
 
+            for (Point p : board.getSnake()) {
+                if (isTail(board.getAt(p))) {
+                    snakeTail = p;
+                }
+            }
 
-        System.out.println(point.distance(board.getHead()));
+            assert snakeTail != null;
+            Pair<Vertex, Vertex> graphToTail = getGraph(board, new int[]{snakeTail.getX(), snakeTail.getY()});
+            Vertex head = graphToTail.first;
+            Vertex tail = graphToTail.second;
+            computePaths(head);
+            List<Vertex> pathToTail = getShortestPathTo(tail);
 
+            return pathToTail.get(1).direction.toString();
+        }
 
         return path.get(1).direction.toString();
     }
@@ -200,7 +218,9 @@ public class YourSolver implements Solver<Board> {
         public final List<Edge> edges = new ArrayList<>();
         public Direction direction = Direction.UP;
         public double minDistance = Double.POSITIVE_INFINITY;
-        public Vertex previous;
+        public double maxDistance = 0;
+        public Vertex minPrevious;
+        public Vertex maxPrevious;
 
         public Vertex(int[] coordinates, int price) {
             this.coordinates = coordinates;
@@ -232,7 +252,7 @@ public class YourSolver implements Solver<Board> {
         }
     }
 
-    public record Edge(Vertex target, double weight, Direction action) {
+    public record Edge(Vertex target, double minWeight, double maxWeight, Direction action) {
     }
 
 }
