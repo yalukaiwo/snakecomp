@@ -80,4 +80,17 @@ public class Snake {
         }
     }
 
+    public static Point getTail(Board board) {
+        Point snakeTail = null;
+
+        for (Point p : board.getSnake()) {
+            if (Snake.isTail(board.getAt(p))) {
+                snakeTail = p;
+            }
+        }
+
+        if (snakeTail == null) throw new NullPointerException();
+
+        return snakeTail;
+    }
 }

@@ -70,11 +70,17 @@ public class YourSolver implements Solver<Board> {
         if (board.isGameOver()) return Direction.UP.toString();
 
         HashMap<Integer, Integer> customPointValues = getCustomPointValues(board);
-
         List<Vertex> path = Graph.getPath(board, board.getHead(), board.getApples().get(0), customPointValues);
+
+        if (path.get(path.size() - 1).minDistance > 1000) {
+            Point tail = Snake.getTail(board);
+            List<Vertex> pathToTail = Graph.getPath(board, board.getHead(), tail, customPointValues);
+            return pathToTail.get(1).direction.toString();
+        }
 
         return path.get(1).direction.toString();
     }
+
     public static void main(String[] args) {
         WebSocketRunner.runClient(
                 "http://165.22.23.49/codenjoy-contest/board/player/w2yuir5eqcz40udkgmp7?code=7996639318638999092",
